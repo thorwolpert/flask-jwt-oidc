@@ -87,3 +87,10 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# IDEs
+.idea
+
+# skip secure dir
+/secure
+

@@ -24,8 +24,12 @@ class JwtManager(object):
         self.audience = None
         self.client_secret = None
 
+        self.jwt_oidc_test_mode = False
+        self.jwt_oidc_test_keys = None
+
         if app is not None:
             self.init_app(app)
+
 
     def init_app(self, app):
         """initializze this extension
@@ -42,31 +46,54 @@ class JwtManager(object):
         AUDIENCE: the oidc audience (or API_IDENTIFIER)
         CLIENT_SECRET: the shared secret / key assigned to the client (audience)
         """
+        self.jwt_oidc_test_mode = app.config.get('JWT_OIDC_TEST_MODE', None)
+        #
+        ## CHECK IF WE"RE RUNNING IN TEST_MODE!!
+        #
+        if self.jwt_oidc_test_mode:
+            app.logger.error('JWT MANAGER running in test mode, using locally defined certs & tokens')
 
-        self.algorithms = [app.config.get('JWT_OIDC_ALGORITHMS', 'RS256')]
+            self.issuer = app.config.get('JWT_OIDC_TEST_ISSUER', 'localhost.localdomain')
+            self.jwt_oidc_test_keys = app.config.get('JWT_OIDC_TEST_KEYS', None)
+            self.audience = app.config.get('JWT_OIDC_TEST_AUDIENCE', None)
+            self.client_secret = app.config.get('JWT_OIDC_TEST_CLIENT_SECRET', None)
+            self.jwt_oidc_test_private_key_pem = app.config.get('JWT_OIDC_TEST_PRIVATE_KEY_PEM', None)
 
-        # If the WELL_KNOWN_CONFIG is set, then go fetch the JWKS & ISSUER
-        self.well_known_config = app.config.get('JWT_OIDC_WELL_KNOWN_CONFIG', None)
-        if self.well_known_config:
-            # try to get the jwks & issuer from the well known config
-            jurl = urlopen(self.well_known_config)
-            self.well_known_obj_cache = json.loads(jurl.read().decode("utf-8"))
+            if self.jwt_oidc_test_keys:
+                app.logger.debug('local key being used: {}'.format(self.jwt_oidc_test_keys))
+            else:
+                app.logger.error('Attempting to run JWT Manager with no local key assigned')
+                raise Exception('Attempting to run JWT Manager with no local key assigned')
 
-            self.jwks_uri = self.well_known_obj_cache['jwks_uri']
-            self.issuer = self.well_known_obj_cache['issuer']
         else:
 
-            self.jwks_uri = app.config.get('JWT_OIDC_JWKS_URI', None)
-            self.issuer = app.config.get('JWT_OIDC_ISSUER', None)
+            self.algorithms = [app.config.get('JWT_OIDC_ALGORITHMS', 'RS256')]
 
-        self.audience = app.config.get('JWT_OIDC_AUDIENCE', None)
-        self.client_secret = app.config.get('JWT_OIDC_CLIENT_SECRET', None)
+            # If the WELL_KNOWN_CONFIG is set, then go fetch the JWKS & ISSUER
+            self.well_known_config = app.config.get('JWT_OIDC_WELL_KNOWN_CONFIG', None)
+            if self.well_known_config:
+                # try to get the jwks & issuer from the well known config
+                jurl = urlopen(self.well_known_config)
+                self.well_known_obj_cache = json.loads(jurl.read().decode("utf-8"))
 
-        app.logger.debug('JWKS_URI: {}'.format(self.jwks_uri))
-        app.logger.debug('ISSUER: {}'.format(self.issuer))
-        app.logger.debug('ALGORITHMS: {}'.format(self.algorithms))
-        app.logger.debug('AUDIENCE: {}'.format(self.audience))
-        app.logger.debug('CLIENT_SECRET: {}'.format(self.client_secret))
+                self.jwks_uri = self.well_known_obj_cache['jwks_uri']
+                self.issuer = self.well_known_obj_cache['issuer']
+            else:
+
+                self.jwks_uri = app.config.get('JWT_OIDC_JWKS_URI', None)
+                self.issuer = app.config.get('JWT_OIDC_ISSUER', None)
+
+            self.audience = app.config.get('JWT_OIDC_AUDIENCE', None)
+            self.client_secret = app.config.get('JWT_OIDC_CLIENT_SECRET', None)
+
+        app.logger.error('JWKS_URI: {}'.format(self.jwks_uri))
+        app.logger.error('ISSUER: {}'.format(self.issuer))
+        app.logger.error('ALGORITHMS: {}'.format(self.algorithms))
+        app.logger.error('AUDIENCE: {}'.format(self.audience))
+        app.logger.error('CLIENT_SECRET: {}'.format(self.client_secret))
+        app.logger.error('JWT_OIDC_TEST_MODE: {}'.format(self.jwt_oidc_test_mode))
+        app.logger.error('JWT_OIDC_TEST_KEYS: {}'.format(self.jwt_oidc_test_keys))
+        app.logger.error('JWT_OIDC_TEST_KEYS: {}'.format(type(self.jwt_oidc_test_keys)))
 
         # set the auth error handler
         auth_err_handler = app.config.get('JWT_OIDC_AUTH_ERROR_HANDLER', JwtManager.handle_auth_error)
@@ -156,8 +183,8 @@ class JwtManager(object):
         @wraps(f)
         def decorated(*args, **kwargs):
             token = self.get_token_auth_header()
-            jsonurl = urlopen(self.jwks_uri)
-            jwks = json.loads(jsonurl.read().decode("utf-8"))
+
+            jwks = self.get_jwks()
             try:
                 unverified_header = jwt.get_unverified_header(token)
             except jwt.JWTError:
@@ -209,3 +236,23 @@ class JwtManager(object):
             raise AuthError({"code": "invalid_header",
                         "description": "Unable to find jwks key referenced in token"}, 401)
         return decorated
+
+    def get_jwks(self):
+
+        if self.jwt_oidc_test_mode:
+            jwks = self.jwt_oidc_test_keys
+        else:
+            jsonurl = urlopen(self.jwks_uri)
+            jwks = json.loads(jsonurl.read().decode("utf-8"))
+
+        return jwks
+
+    def create_jwt(self, claims):
+        header={
+            "alg": "RS256",
+            "typ": "JWT",
+            "kid": "flask-jwt-oidc-test-client"
+        }
+        token = jwt.encode(claims,self.jwt_oidc_test_private_key_pem, headers=header, algorithm='RS256')
+        return token
+
