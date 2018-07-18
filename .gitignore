@@ -94,3 +94,6 @@ venv.bak/
 # skip secure dir
 /secure
 
+# OSX poops
+.DS_Store
+

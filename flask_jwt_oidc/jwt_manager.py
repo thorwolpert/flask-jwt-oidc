@@ -1,4 +1,4 @@
-from flask import request, current_app, _request_ctx_stack, jsonify
+from flask import request, current_app, _request_ctx_stack, jsonify, g
 from six.moves.urllib.request import urlopen
 from jose import jwt
 from functools import wraps
@@ -46,12 +46,13 @@ class JwtManager(object):
         AUDIENCE: the oidc audience (or API_IDENTIFIER)
         CLIENT_SECRET: the shared secret / key assigned to the client (audience)
         """
+        self.app = app
         self.jwt_oidc_test_mode = app.config.get('JWT_OIDC_TEST_MODE', None)
         #
         ## CHECK IF WE"RE RUNNING IN TEST_MODE!!
         #
         if self.jwt_oidc_test_mode:
-            app.logger.error('JWT MANAGER running in test mode, using locally defined certs & tokens')
+            app.logger.debug('JWT MANAGER running in test mode, using locally defined certs & tokens')
 
             self.issuer = app.config.get('JWT_OIDC_TEST_ISSUER', 'localhost.localdomain')
             self.jwt_oidc_test_keys = app.config.get('JWT_OIDC_TEST_KEYS', None)
@@ -86,14 +87,14 @@ class JwtManager(object):
             self.audience = app.config.get('JWT_OIDC_AUDIENCE', None)
             self.client_secret = app.config.get('JWT_OIDC_CLIENT_SECRET', None)
 
-        app.logger.error('JWKS_URI: {}'.format(self.jwks_uri))
-        app.logger.error('ISSUER: {}'.format(self.issuer))
-        app.logger.error('ALGORITHMS: {}'.format(self.algorithms))
-        app.logger.error('AUDIENCE: {}'.format(self.audience))
-        app.logger.error('CLIENT_SECRET: {}'.format(self.client_secret))
-        app.logger.error('JWT_OIDC_TEST_MODE: {}'.format(self.jwt_oidc_test_mode))
-        app.logger.error('JWT_OIDC_TEST_KEYS: {}'.format(self.jwt_oidc_test_keys))
-        app.logger.error('JWT_OIDC_TEST_KEYS: {}'.format(type(self.jwt_oidc_test_keys)))
+        app.logger.debug('JWKS_URI: {}'.format(self.jwks_uri))
+        app.logger.debug('ISSUER: {}'.format(self.issuer))
+        app.logger.debug('ALGORITHMS: {}'.format(self.algorithms))
+        app.logger.debug('AUDIENCE: {}'.format(self.audience))
+        app.logger.debug('CLIENT_SECRET: {}'.format(self.client_secret))
+        app.logger.debug('JWT_OIDC_TEST_MODE: {}'.format(self.jwt_oidc_test_mode))
+        app.logger.debug('JWT_OIDC_TEST_KEYS: {}'.format(self.jwt_oidc_test_keys))
+        app.logger.debug('JWT_OIDC_TEST_KEYS: {}'.format(type(self.jwt_oidc_test_keys)))
 
         # set the auth error handler
         auth_err_handler = app.config.get('JWT_OIDC_AUTH_ERROR_HANDLER', JwtManager.handle_auth_error)
@@ -152,7 +153,7 @@ class JwtManager(object):
         token = self.get_token_auth_header()
         unverified_claims = jwt.get_unverified_claims(token)
         roles_in_token = current_app.config['JWT_ROLE_CALLBACK'](unverified_claims)
-        if [role for role in roles_in_token if role in required_roles]:
+        if all(elem in roles_in_token for elem in required_roles):
             return True
         return False
 
@@ -197,17 +198,8 @@ class JwtManager(object):
                             "description":
                                 "Invalid header. "
                                 "Use an RS256 signed JWT Access Token"}, 401)
-            current_app.logger.debug('unverified_header: {}'.format(unverified_header))
-            rsa_key = {}
-            for key in jwks["keys"]:
-                if key["kid"] == unverified_header["kid"]:
-                    rsa_key = {
-                        "kty": key["kty"],
-                        "kid": key["kid"],
-                        "use": key["use"],
-                        "n": key["n"],
-                        "e": key["e"]
-                    }
+
+            rsa_key = self.get_rsa_key(jwks, unverified_header["kid"])
             if rsa_key:
                 try:
                     payload = jwt.decode(
@@ -216,7 +208,9 @@ class JwtManager(object):
                         algorithms=self.algorithms,
                         audience=self.audience,
                         issuer=self.issuer
-                )
+                    )
+                    _request_ctx_stack.top.current_user = g.jwt_oidc_token_info = payload
+
                 except jwt.ExpiredSignatureError:
                     raise AuthError({"code": "token_expired",
                                 "description": "token has expired"}, 401)
@@ -231,8 +225,8 @@ class JwtManager(object):
                                     "Unable to parse authentication"
                                     " token."}, 401)
 
-                _request_ctx_stack.top.current_user = payload
                 return f(*args, **kwargs)
+
             raise AuthError({"code": "invalid_header",
                         "description": "Unable to find jwks key referenced in token"}, 401)
         return decorated
@@ -247,12 +241,20 @@ class JwtManager(object):
 
         return jwks
 
-    def create_jwt(self, claims):
-        header={
-            "alg": "RS256",
-            "typ": "JWT",
-            "kid": "flask-jwt-oidc-test-client"
-        }
+    def create_jwt(self, claims, header):
         token = jwt.encode(claims,self.jwt_oidc_test_private_key_pem, headers=header, algorithm='RS256')
         return token
+
+    def get_rsa_key(self, jwks, kid):
+        rsa_key = {}
+        for key in jwks["keys"]:
+            if key["kid"] == kid:
+                rsa_key = {
+                    "kty": key["kty"],
+                    "kid": key["kid"],
+                    "use": key["use"],
+                    "n": key["n"],
+                    "e": key["e"]
+                }
+        return rsa_key
 

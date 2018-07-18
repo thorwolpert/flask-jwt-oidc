@@ -66,7 +66,7 @@ def add_routes(app):
     def secure_with_roles():
         """valid access token and assigned roles are required
         """
-        if jwt.validate_roles("names_editor"):
+        if jwt.validate_roles(['editor', 'approver']):
             return jsonify(message="This is a secured endpoint, where roles were examined in the body of the procedure! "
                                    "You provided a valid JWT token")
 
@@ -79,7 +79,7 @@ def add_routes(app):
     @app.route("/api/secured-decorated-roles")
     @cross_origin(headers=["Content-Type", "Authorization"])
     @cross_origin(headers=["Access-Control-Allow-Origin", "*"]) # IRL you'd scope this to a real domain
-    @jwt.requires_roles("names_editor")
+    @jwt.requires_roles(['editor'])
     def secure_deco_roles():
         """valid access token and assigned roles are required
         """
