@@ -4,7 +4,6 @@
 
 # for dev
 flask-cors
-#flask-jwt-oidc
 git+https://github.com/thorwolpert/flask-jwt-oidc.git
 
 # testing
