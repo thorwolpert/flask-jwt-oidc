@@ -2,7 +2,7 @@ from flask import request, current_app, _request_ctx_stack, jsonify, g
 from six.moves.urllib.request import urlopen
 from jose import jwt
 from functools import wraps
-
+import ssl
 import json
 
 from .exceptions import AuthError
@@ -68,13 +68,13 @@ class JwtManager(object):
 
         else:
 
-            self.algorithms = [app.config.get('JWT_OIDC_ALGORITHMS', 'RS256')]
+            self.algorithms = [app.config.get('JWT_OIDC_ALGORITHMS', JwtManager.ALGORITHMS)]
 
             # If the WELL_KNOWN_CONFIG is set, then go fetch the JWKS & ISSUER
             self.well_known_config = app.config.get('JWT_OIDC_WELL_KNOWN_CONFIG', None)
             if self.well_known_config:
                 # try to get the jwks & issuer from the well known config
-                jurl = urlopen(self.well_known_config)
+                jurl = urlopen(url=self.well_known_config, context=ssl.create_default_context())
                 self.well_known_obj_cache = json.loads(jurl.read().decode("utf-8"))
 
                 self.jwks_uri = self.well_known_obj_cache['jwks_uri']
@@ -94,7 +94,6 @@ class JwtManager(object):
         app.logger.debug('CLIENT_SECRET: {}'.format(self.client_secret))
         app.logger.debug('JWT_OIDC_TEST_MODE: {}'.format(self.jwt_oidc_test_mode))
         app.logger.debug('JWT_OIDC_TEST_KEYS: {}'.format(self.jwt_oidc_test_keys))
-        app.logger.debug('JWT_OIDC_TEST_KEYS: {}'.format(type(self.jwt_oidc_test_keys)))
 
         # set the auth error handler
         auth_err_handler = app.config.get('JWT_OIDC_AUTH_ERROR_HANDLER', JwtManager.handle_auth_error)
@@ -142,7 +141,6 @@ class JwtManager(object):
 
         return parts[1]
 
-
     def validate_roles(self, required_roles):
         """Checks that the listed roles are in the token
            using the registered callback
@@ -157,7 +155,6 @@ class JwtManager(object):
             return True
         return False
 
-
     def requires_roles(self, required_roles):
         """Checks that the listed roles are in the token
            using the registered callback
@@ -168,7 +165,7 @@ class JwtManager(object):
         def decorated(f):
             @wraps(f)
             def wrapper(*args, **kwargs):
-                self.requires_auth(f)(*args, **kwargs)
+                self._require_auth_validation(*args, **kwargs)
                 if self.validate_roles(required_roles):
                     return f(*args, **kwargs)
                 raise AuthError({"code": "missing_required_roles",
@@ -177,59 +174,64 @@ class JwtManager(object):
             return wrapper
         return decorated
 
-
     def requires_auth(self, f):
         """Validates the Bearer Token
         """
         @wraps(f)
         def decorated(*args, **kwargs):
-            token = self.get_token_auth_header()
 
-            jwks = self.get_jwks()
-            try:
-                unverified_header = jwt.get_unverified_header(token)
-            except jwt.JWTError:
-                raise AuthError({"code": "invalid_header",
-                            "description":
-                                "Invalid header. "
-                                "Use an RS256 signed JWT Access Token"}, 401)
-            if unverified_header["alg"] == "HS256":
-                raise AuthError({"code": "invalid_header",
-                            "description":
-                                "Invalid header. "
-                                "Use an RS256 signed JWT Access Token"}, 401)
+            self._require_auth_validation(*args, **kwargs)
 
-            rsa_key = self.get_rsa_key(jwks, unverified_header["kid"])
-            if rsa_key:
-                try:
-                    payload = jwt.decode(
-                        token,
-                        rsa_key,
-                        algorithms=self.algorithms,
-                        audience=self.audience,
-                        issuer=self.issuer
-                    )
-                    _request_ctx_stack.top.current_user = g.jwt_oidc_token_info = payload
+            return f(*args, **kwargs)
 
-                except jwt.ExpiredSignatureError:
-                    raise AuthError({"code": "token_expired",
-                                "description": "token has expired"}, 401)
-                except jwt.JWTClaimsError:
-                    raise AuthError({"code": "invalid_claims",
-                                "description":
-                                    "incorrect claims,"
-                                    " please check the audience and issuer"}, 401)
-                except Exception:
-                    raise AuthError({"code": "invalid_header",
-                                "description":
-                                    "Unable to parse authentication"
-                                    " token."}, 401)
-
-                return f(*args, **kwargs)
-
-            raise AuthError({"code": "invalid_header",
-                        "description": "Unable to find jwks key referenced in token"}, 401)
         return decorated
+
+    def _require_auth_validation(self, *args, **kwargs):
+        token = self.get_token_auth_header()
+
+        jwks = self.get_jwks()
+        try:
+            unverified_header = jwt.get_unverified_header(token)
+        except jwt.JWTError:
+            raise AuthError({"code": "invalid_header",
+                             "description":
+                                 "Invalid header. "
+                                 "Use an RS256 signed JWT Access Token"}, 401)
+        if unverified_header["alg"] == "HS256":
+            raise AuthError({"code": "invalid_header",
+                             "description":
+                                 "Invalid header. "
+                                 "Use an RS256 signed JWT Access Token"}, 401)
+
+        rsa_key = self.get_rsa_key(jwks, unverified_header["kid"])
+
+        if not rsa_key:
+            raise AuthError({"code": "invalid_header",
+                             "description": "Unable to find jwks key referenced in token"}, 401)
+        else:
+            try:
+                payload = jwt.decode(
+                    token,
+                    rsa_key,
+                    algorithms=self.algorithms,
+                    audience=self.audience,
+                    issuer=self.issuer
+                )
+                _request_ctx_stack.top.current_user = g.jwt_oidc_token_info = payload
+
+            except jwt.ExpiredSignatureError:
+                raise AuthError({"code": "token_expired",
+                                 "description": "token has expired"}, 401)
+            except jwt.JWTClaimsError:
+                raise AuthError({"code": "invalid_claims",
+                                 "description":
+                                     "incorrect claims,"
+                                     " please check the audience and issuer"}, 401)
+            except Exception:
+                raise AuthError({"code": "invalid_header",
+                                 "description":
+                                     "Unable to parse authentication"
+                                     " token."}, 401)
 
     def get_jwks(self):
 

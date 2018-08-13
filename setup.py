@@ -26,7 +26,7 @@ def read_requirements(filename):
     """
     Get application requirements from
     the requirements.txt file.
-    :return: portal_ui Python requirements
+    :return: Python requirements
     :rtype: list
     """
     with open(filename, 'r') as req:
@@ -53,11 +53,11 @@ packages = find_packages(".")
 
 
 setup(name='flask_jwt_oidc',
-      version='0.1.0dev',
+      version='0.1.2',
       description='Flask JWT OIDC',
       author='thor wolpert, with help from others',
       author_email='thor@wolpert.ca',
-      license='Apache 2',
+      license=read('LICENSE'),
       include_package_data=False,
       long_description =read('README.md'),
       packages=packages.keys(),
@@ -71,12 +71,11 @@ setup(name='flask_jwt_oidc',
       ],
       platforms='any',
       zip_safe=False,
+      keywords='flask extension development',
       classifiers = [
-           'Development Status :: 0.1.0 - dev',
-           'Environment :: Console',
+           'Development Status :: 0.1.0 - Beta',
            'Environment :: Web API',
            'Intended Audience :: Developers',
-           'Intended Audience :: System Administrators',
            'License :: OSI Approved :: Apache 2.0 License',
            'Operating System :: MacOS :: MacOS X',
            'Operating System :: Microsoft :: Windows',
@@ -84,5 +83,6 @@ setup(name='flask_jwt_oidc',
            'Programming Language :: Python',
            'Topic :: Communications :: Email',
            'Topic :: Software Development :: GitHub Issue Tracking',
+           'Topic :: Software Development :: Libraries :: Python Modules'
       ],
 )

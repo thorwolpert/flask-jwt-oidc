@@ -10,7 +10,7 @@ Minimum config:
     The jwks_uri & issuer URLs are obtained from the .well_known config endpoint
 """
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, current_app
 from flask_cors import cross_origin
 from examples.flask_app.config import Config
 # from flask_jwt_oidc import AuthError, JwtManager
@@ -79,7 +79,7 @@ def add_routes(app):
     @app.route("/api/secured-decorated-roles")
     @cross_origin(headers=["Content-Type", "Authorization"])
     @cross_origin(headers=["Access-Control-Allow-Origin", "*"]) # IRL you'd scope this to a real domain
-    @jwt.requires_roles(['editor'])
+    @jwt.requires_roles(['approver'])
     def secure_deco_roles():
         """valid access token and assigned roles are required
         """
