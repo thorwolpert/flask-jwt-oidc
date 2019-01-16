@@ -1,9 +1,10 @@
+import ssl
+import json
+
 from flask import request, current_app, _request_ctx_stack, jsonify, g
 from six.moves.urllib.request import urlopen
 from jose import jwt
 from functools import wraps
-import ssl
-import json
 
 from .exceptions import AuthError
 
@@ -29,7 +30,6 @@ class JwtManager(object):
 
         if app is not None:
             self.init_app(app)
-
 
     def init_app(self, app):
         """initializze this extension
@@ -74,7 +74,8 @@ class JwtManager(object):
             self.well_known_config = app.config.get('JWT_OIDC_WELL_KNOWN_CONFIG', None)
             if self.well_known_config:
                 # try to get the jwks & issuer from the well known config
-                jurl = urlopen(url=self.well_known_config, context=ssl.create_default_context())
+                # jurl = urlopen(url=self.well_known_config, context=ssl.create_default_context())
+                jurl = urlopen(url=self.well_known_config)
                 self.well_known_obj_cache = json.loads(jurl.read().decode("utf-8"))
 
                 self.jwks_uri = self.well_known_obj_cache['jwks_uri']
@@ -140,6 +141,39 @@ class JwtManager(object):
                             ,401)
 
         return parts[1]
+
+    def contains_role(self, roles):
+        """Checks that the listed roles are in the token
+           using the registered callback
+        Args:
+            roles (str): Comma separated list of valid roles
+            JWT_ROLE_CALLBACK (fn): The callback added to the Flask configuration
+        """
+        token = self.get_token_auth_header()
+        unverified_claims = jwt.get_unverified_claims(token)
+        roles_in_token = current_app.config['JWT_ROLE_CALLBACK'](unverified_claims)
+        if any(elem in roles_in_token for elem in roles):
+            return True
+        return False
+
+    def has_one_of_roles(self, roles):
+        """Checks that at least one of the roles are in the token
+           using the registered callback
+        Args:
+            roles (str): Comma separated list of valid roles
+            JWT_ROLE_CALLBACK (fn): The callback added to the Flask configuration
+        """
+        def decorated(f):
+            @wraps(f)
+            def wrapper(*args, **kwargs):
+                self._require_auth_validation(*args, **kwargs)
+                if self.contains_role(roles):
+                    return f(*args, **kwargs)
+                raise AuthError({"code": "missing_a_valid_role",
+                                 "description":
+                                     "Missing a role required to access this endpoint"}, 401)
+            return wrapper
+        return decorated
 
     def validate_roles(self, required_roles):
         """Checks that the listed roles are in the token

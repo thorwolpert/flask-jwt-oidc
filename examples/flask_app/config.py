@@ -1,4 +1,5 @@
-from os import environ as env
+import os
+from os import environ as env, getenv
 from dotenv import load_dotenv, find_dotenv
 
 
@@ -6,11 +7,12 @@ ENV_FILE = find_dotenv()
 if ENV_FILE:
     load_dotenv(ENV_FILE)
 
+
 class Config(object):
 
     # JWT_OIDC Settings
     JWT_OIDC_WELL_KNOWN_CONFIG = env.get('JWT_OIDC_WELL_KNOWN_CONFIG')
-    JWT_OIDC_ALGORITHMS = env.get('JWT_OIDC_ALGORITHMS')
+    JWT_OIDC_ALGORITHMS = 'RS256'
     JWT_OIDC_JWKS_URI = env.get('JWT_OIDC_JWKS_URI')
     JWT_OIDC_ISSUER = env.get('JWT_OIDC_ISSUER')
     JWT_OIDC_AUDIENCE = env.get('JWT_OIDC_AUDIENCE')
@@ -26,21 +28,20 @@ class TestConfig(Config):
     # JWT OIDC settings
     ## JWT_OIDC_TEST_MODE will set jwt_manager to use
     JWT_OIDC_TEST_MODE = True
-    JWT_OIDC_TEST_AUDIENCE = env.get('JWT_OIDC_AUDIENCE')
-    JWT_OIDC_TEST_CLIENT_SECRET = env.get('JWT_OIDC_CLIENT_SECRET')
-    JWT_OIDC_TEST_ISSUER = 'https://dev-sso.pathfinder.gov.bc.ca/auth/realms/nest'
+    JWT_OIDC_TEST_AUDIENCE = 'example'
+    JWT_OIDC_TEST_ISSUER = 'https://example.localdomain/auth/realms/example'
     JWT_OIDC_TEST_KEYS = {
-                        "keys": [
-                            {
-                                "kid": "flask-jwt-oidc-test-client",
-                                "kty": "RSA",
-                                "alg": "RS256",
-                                "use": "sig",
-                                "n": "AN-fWcpCyE5KPzHDjigLaSUVZI0uYrcGcc40InVtl-rQRDmAh-C2W8H4_Hxhr5VLc6crsJ2LiJTV_E72S03pzpOOaaYV6-TzAjCou2GYJIXev7f6Hh512PuG5wyxda_TlBSsI-gvphRTPsKCnPutrbiukCYrnPuWxX5_cES9eStR",
-                                "e": "AQAB"
-                            }
-                        ]
-                    }
+        "keys": [
+            {
+                "kid": "flask-jwt-oidc-test-client",
+                "kty": "RSA",
+                "alg": "RS256",
+                "use": "sig",
+                "n": "AN-fWcpCyE5KPzHDjigLaSUVZI0uYrcGcc40InVtl-rQRDmAh-C2W8H4_Hxhr5VLc6crsJ2LiJTV_E72S03pzpOOaaYV6-TzAjCou2GYJIXev7f6Hh512PuG5wyxda_TlBSsI-gvphRTPsKCnPutrbiukCYrnPuWxX5_cES9eStR",
+                "e": "AQAB"
+            }
+        ]
+    }
 
     JWT_OIDC_TEST_PRIVATE_KEY_JWKS ={
                         "keys": [

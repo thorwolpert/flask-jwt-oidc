@@ -5,6 +5,7 @@ This is a fairly simple extension that should require minimal setup for OIDC sta
 
 Currently it's testing against Keycloak, but will be adding in example configs and testing for:
 - Keycloak
+- dex
 - Google
 - Amazon IAM
 - Auth0
@@ -14,6 +15,10 @@ Currently it's testing against Keycloak, but will be adding in example configs a
 There are some great alternatives that are not so opinionated and provide more support for general JWTs
 Check out: [**Flask-JWT-Simple**](https://github.com/vimalloc/flask-jwt-simple) 
 
+### Example(s)
+There is one example under
+`example/flask_app`
+It uses pytest and sets up a dummy JWT to be used in the tests.
 ### Configuration
 Create a .env file,  or OS configmap, shell exports, etc.
 ```bash

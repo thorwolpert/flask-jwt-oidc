@@ -3,8 +3,9 @@
 -r prod.txt
 
 # for dev
+python-dotenv
 flask-cors
-git+https://github.com/thorwolpert/flask-jwt-oidc.git
+#git+https://github.com/thorwolpert/flask-jwt-oidc.git
 
 # testing
 pytest

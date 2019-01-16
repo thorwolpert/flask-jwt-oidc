@@ -1,0 +1,8 @@
+
+#export JWT_OIDC_WELL_KNOWN_CONFIG="https://sso-dev.pathfinder.gov.bc.ca/auth/realms/sbc/.well-known/openid-configuration"
+#export JWT_OIDC_ALGORITHMS="RS256"
+
+#export JWT_OIDC_JWKS_URI="https://sso-dev.pathfinder.gov.bc.ca/auth/realms/sbc/protocol/openid-connect/certs"
+#export JWT_OIDC_ISSUER="https://sso-dev.pathfinder.gov.bc.ca/auth/realms/sbc"
+#export JWT_OIDC_AUDIENCE="NameX-Dev"
+#export JWT_OIDC_CLIENT_SECRET="	 b05bae52-e0d3-4c42-9954-594b22d1d24b"

@@ -53,7 +53,7 @@ packages = find_packages(".")
 
 
 setup(name='flask_jwt_oidc',
-      version='0.1.2',
+      version='0.1.3',
       description='Flask JWT OIDC',
       author='thor wolpert, with help from others',
       author_email='thor@wolpert.ca',
@@ -74,7 +74,7 @@ setup(name='flask_jwt_oidc',
       zip_safe=False,
       keywords='flask extension development',
       classifiers = [
-           'Development Status :: 0.1.0 - Beta',
+           'Development Status :: 0.1.3 - Beta',
            'Environment :: Web API',
            'Intended Audience :: Developers',
            'License :: OSI Approved :: Apache 2.0 License',
