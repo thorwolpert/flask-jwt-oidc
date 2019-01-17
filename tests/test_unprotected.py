@@ -6,9 +6,11 @@ def test_unprotected(client, app):
     message='This is an unprotected end-point'
 
     @app.route('/unprotected')
-    def public():
+    def get():
         return jsonify(message=message)
 
     rv = client.get('/unprotected')
 
-    assert ('"message":"'+message+'"').encode('utf-8') in rv.data
+    print ('test is', rv.data)
+
+    assert message.encode('utf-8') in rv.data

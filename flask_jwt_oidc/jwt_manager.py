@@ -146,7 +146,7 @@ class JwtManager(object):
         """Checks that the listed roles are in the token
            using the registered callback
         Args:
-            roles (str): Comma separated list of valid roles
+            roles [str,]: Comma separated list of valid roles
             JWT_ROLE_CALLBACK (fn): The callback added to the Flask configuration
         """
         token = self.get_token_auth_header()
@@ -160,7 +160,7 @@ class JwtManager(object):
         """Checks that at least one of the roles are in the token
            using the registered callback
         Args:
-            roles (str): Comma separated list of valid roles
+            roles [str,]: Comma separated list of valid roles
             JWT_ROLE_CALLBACK (fn): The callback added to the Flask configuration
         """
         def decorated(f):
@@ -179,7 +179,7 @@ class JwtManager(object):
         """Checks that the listed roles are in the token
            using the registered callback
         Args:
-            required_roles (str): Comma separated list of required roles
+            required_roles [str,]: Comma separated list of required roles
             JWT_ROLE_CALLBACK (fn): The callback added to the Flask configuration
         """
         token = self.get_token_auth_header()
@@ -193,7 +193,7 @@ class JwtManager(object):
         """Checks that the listed roles are in the token
            using the registered callback
         Args:
-            required_roles (str): Comma separated list of required roles
+            required_roles [str,]: Comma separated list of required roles
             JWT_ROLE_CALLBACK (fn): The callback added to the Flask configuration
         """
         def decorated(f):
