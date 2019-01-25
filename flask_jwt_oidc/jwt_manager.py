@@ -25,7 +25,7 @@ class JwtManager(object):
         self.audience = None
         self.client_secret = None
         self.cache = None
-        self.cache_jwks = False
+        self.caching_enabled = False
 
         self.jwt_oidc_test_mode = False
         self.jwt_oidc_test_keys = None
@@ -88,8 +88,8 @@ class JwtManager(object):
                 self.issuer = app.config.get('JWT_OIDC_ISSUER', None)
 
             # Setup JWKS caching
-            self.cache_jwks = app.config.get('JWT_OIDC_CACHE_JWKS', False)
-            if self.cache_jwks:
+            self.caching_enabled = app.config.get('JWT_OIDC_CACHING_ENABLED', False)
+            if self.caching_enabled:
                 from werkzeug.contrib.cache import SimpleCache
                 self.cache = SimpleCache(default_timeout=app.config.get('JWT_OIDC_JWKS_CACHE_TIMEOUT', 300))
 
@@ -251,7 +251,7 @@ class JwtManager(object):
 
         rsa_key = self.get_rsa_key(self.get_jwks(), unverified_header["kid"])
         
-        if not rsa_key and self.cache_jwks:
+        if not rsa_key and self.caching_enabled:
             # Could be key rotation, invalidate the cache and try again
             self.cache.delete('jwks')
             rsa_key = self.get_rsa_key(self.get_jwks(), unverified_header["kid"])
@@ -287,7 +287,7 @@ class JwtManager(object):
         if self.jwt_oidc_test_mode:
             return self.jwt_oidc_test_keys
         
-        if self.cache_jwks:
+        if self.caching_enabled:
             return _get_jwks_from_cache()
         else:
             return _fetch_jwks_from_url()
