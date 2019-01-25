@@ -24,6 +24,8 @@ class JwtManager(object):
         self.issuer = None
         self.audience = None
         self.client_secret = None
+        self.cache = None
+        self.cache_jwks = False
 
         self.jwt_oidc_test_mode = False
         self.jwt_oidc_test_keys = None
@@ -84,6 +86,12 @@ class JwtManager(object):
 
                 self.jwks_uri = app.config.get('JWT_OIDC_JWKS_URI', None)
                 self.issuer = app.config.get('JWT_OIDC_ISSUER', None)
+
+            # Setup JWKS caching
+            self.cache_jwks = app.config.get('JWT_OIDC_CACHE_JWKS', False)
+            if self.cache_jwks:
+                from werkzeug.contrib.cache import SimpleCache
+                self.cache = SimpleCache(default_timeout=app.config.get('JWT_OIDC_JWKS_CACHE_TIMEOUT', 300))
 
             self.audience = app.config.get('JWT_OIDC_AUDIENCE', None)
             self.client_secret = app.config.get('JWT_OIDC_CLIENT_SECRET', None)
