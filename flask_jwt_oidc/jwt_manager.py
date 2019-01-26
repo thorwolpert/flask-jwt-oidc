@@ -24,6 +24,8 @@ class JwtManager(object):
         self.issuer = None
         self.audience = None
         self.client_secret = None
+        self.cache = None
+        self.caching_enabled = False
 
         self.jwt_oidc_test_mode = False
         self.jwt_oidc_test_keys = None
@@ -84,6 +86,12 @@ class JwtManager(object):
 
                 self.jwks_uri = app.config.get('JWT_OIDC_JWKS_URI', None)
                 self.issuer = app.config.get('JWT_OIDC_ISSUER', None)
+
+            # Setup JWKS caching
+            self.caching_enabled = app.config.get('JWT_OIDC_CACHING_ENABLED', False)
+            if self.caching_enabled:
+                from werkzeug.contrib.cache import SimpleCache
+                self.cache = SimpleCache(default_timeout=app.config.get('JWT_OIDC_JWKS_CACHE_TIMEOUT', 300))
 
             self.audience = app.config.get('JWT_OIDC_AUDIENCE', None)
             self.client_secret = app.config.get('JWT_OIDC_CLIENT_SECRET', None)
@@ -223,7 +231,6 @@ class JwtManager(object):
     def _require_auth_validation(self, *args, **kwargs):
         token = self.get_token_auth_header()
 
-        jwks = self.get_jwks()
         try:
             unverified_header = jwt.get_unverified_header(token)
         except jwt.JWTError:
@@ -236,46 +243,65 @@ class JwtManager(object):
                              "description":
                                  "Invalid header. "
                                  "Use an RS256 signed JWT Access Token"}, 401)
+        if not "kid" in unverified_header:
+            raise AuthError({"code": "invalid_header",
+                             "description":
+                                 "Invalid header. "
+                                 "No KID in token header"}, 401)
 
-        rsa_key = self.get_rsa_key(jwks, unverified_header["kid"])
+        rsa_key = self.get_rsa_key(self.get_jwks(), unverified_header["kid"])
+        
+        if not rsa_key and self.caching_enabled:
+            # Could be key rotation, invalidate the cache and try again
+            self.cache.delete('jwks')
+            rsa_key = self.get_rsa_key(self.get_jwks(), unverified_header["kid"])
 
         if not rsa_key:
             raise AuthError({"code": "invalid_header",
                              "description": "Unable to find jwks key referenced in token"}, 401)
-        else:
-            try:
-                payload = jwt.decode(
-                    token,
-                    rsa_key,
-                    algorithms=self.algorithms,
-                    audience=self.audience,
-                    issuer=self.issuer
-                )
-                _request_ctx_stack.top.current_user = g.jwt_oidc_token_info = payload
-
-            except jwt.ExpiredSignatureError:
-                raise AuthError({"code": "token_expired",
-                                 "description": "token has expired"}, 401)
-            except jwt.JWTClaimsError:
-                raise AuthError({"code": "invalid_claims",
-                                 "description":
-                                     "incorrect claims,"
-                                     " please check the audience and issuer"}, 401)
-            except Exception:
-                raise AuthError({"code": "invalid_header",
-                                 "description":
-                                     "Unable to parse authentication"
-                                     " token."}, 401)
+            
+        try:
+            payload = jwt.decode(
+                token,
+                rsa_key,
+                algorithms=self.algorithms,
+                audience=self.audience,
+                issuer=self.issuer
+            )
+            _request_ctx_stack.top.current_user = g.jwt_oidc_token_info = payload
+        except jwt.ExpiredSignatureError:
+            raise AuthError({"code": "token_expired",
+                             "description": "token has expired"}, 401)
+        except jwt.JWTClaimsError:
+            raise AuthError({"code": "invalid_claims",
+                             "description":
+                                 "incorrect claims,"
+                                 " please check the audience and issuer"}, 401)
+        except Exception:
+            raise AuthError({"code": "invalid_header",
+                             "description":
+                                 "Unable to parse authentication"
+                                 " token."}, 401)
 
     def get_jwks(self):
-
         if self.jwt_oidc_test_mode:
-            jwks = self.jwt_oidc_test_keys
+            return self.jwt_oidc_test_keys
+        
+        if self.caching_enabled:
+            return _get_jwks_from_cache()
         else:
-            jsonurl = urlopen(self.jwks_uri)
-            jwks = json.loads(jsonurl.read().decode("utf-8"))
+            return _fetch_jwks_from_url()
 
+    def _get_jwks_from_cache(self):
+        jwks = self.cache.get('jwks')
+        if jwks is None:
+            jwks = _fetch_jwks_from_url()
+            cache.set('jwks', jwks)
         return jwks
+
+    def _fetch_jwks_from_url(self):
+        jsonurl = urlopen(self.jwks_uri)
+        return json.loads(jsonurl.read().decode("utf-8"))
 
     def create_jwt(self, claims, header):
         token = jwt.encode(claims,self.jwt_oidc_test_private_key_pem, headers=header, algorithm='RS256')
@@ -293,4 +319,3 @@ class JwtManager(object):
                     "e": key["e"]
                 }
         return rsa_key
-
