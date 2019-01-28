@@ -288,15 +288,15 @@ class JwtManager(object):
             return self.jwt_oidc_test_keys
         
         if self.caching_enabled:
-            return _get_jwks_from_cache()
+            return self._get_jwks_from_cache()
         else:
-            return _fetch_jwks_from_url()
+            return self._fetch_jwks_from_url()
 
     def _get_jwks_from_cache(self):
         jwks = self.cache.get('jwks')
         if jwks is None:
-            jwks = _fetch_jwks_from_url()
-            cache.set('jwks', jwks)
+            jwks = self._fetch_jwks_from_url()
+            self.cache.set('jwks', jwks)
         return jwks
 
     def _fetch_jwks_from_url(self):
