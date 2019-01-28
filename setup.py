@@ -53,7 +53,7 @@ packages = find_packages(".")
 
 
 setup(name='flask_jwt_oidc',
-      version='0.1.4',
+      version='0.1.5',
       description='Flask JWT OIDC',
       author='thor wolpert, with help from others',
       author_email='thor@wolpert.ca',
