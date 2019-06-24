@@ -70,7 +70,11 @@ class JwtManager(object):
 
         else:
 
-            self.algorithms = [app.config.get('JWT_OIDC_ALGORITHMS', JwtManager.ALGORITHMS)]
+            self.algorithms = app.config.get('JWT_OIDC_ALGORITHMS', JwtManager.ALGORITHMS)
+
+            # allow JWT_OIDC_ALGORITHMS to be a string.
+            if isinstance(self.algorithms, str):
+                self.algorithms = self.algorithms.split(',')
 
             # If the WELL_KNOWN_CONFIG is set, then go fetch the JWKS & ISSUER
             self.well_known_config = app.config.get('JWT_OIDC_WELL_KNOWN_CONFIG', None)
