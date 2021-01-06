@@ -27,10 +27,10 @@ def test_public_api_fancy(client):
 
 
 token_header = {
-                "alg": "RS256",
-                "typ": "JWT",
-                "kid": "flask-jwt-oidc-test-client"
-               }
+    "alg": "RS256",
+    "typ": "JWT",
+    "kid": "flask-jwt-oidc-test-client"
+}
 claims = {
     "iss": "https://example.localdomain/auth/realms/example",
     "sub": "43e6a245-0bf7-4ccf-9bd0-e7fb85fd18cc",
@@ -51,7 +51,7 @@ claims = {
 }
 
 
-def test_api_secure (client, jwt):
+def test_api_secure(client, jwt):
     """
     First test that verifies we have a valid JWT Bearer token
     :fixture client:
@@ -65,7 +65,7 @@ def test_api_secure (client, jwt):
     assert json_msg.data == rv.data
 
 
-def test_api_secure_and_role_in_body (client, jwt):
+def test_api_secure_and_role_in_body(client, jwt):
     """
     Testing both a valid token and testing the roles callback within the function body
     :fixture client:
@@ -77,12 +77,12 @@ def test_api_secure_and_role_in_body (client, jwt):
     rv = client.get('/api/secured-and-roles', headers=headers)
 
     json_msg = jsonify(message="This is a secured endpoint, where roles were examined in the body of the procedure! "
-                                   "You provided a valid JWT token")
+                       "You provided a valid JWT token")
 
     assert json_msg.data == rv.data
 
 
-def test_api_secure_and_decorate_roles (client, jwt):
+def test_api_secure_and_decorate_roles(client, jwt):
     """
     Testing both a valid token and the roles decorator
     :fixture client:
@@ -99,7 +99,7 @@ def test_api_secure_and_decorate_roles (client, jwt):
     assert json_msg.data == rv.data
 
 
-def test_api_secure_and_decorate_with_at_least_one_valid_role (client, jwt):
+def test_api_secure_and_decorate_with_at_least_one_valid_role(client, jwt):
     """
     Testing both a valid token and the roles decorator
     :fixture client:
@@ -122,8 +122,6 @@ def test_current_user_set(app, client, jwt):
     headers = {'Authorization': 'Bearer ' + token}
     rv = client.get('/api/secure', headers=headers)
 
+    assert rv
     assert _request_ctx_stack.top.current_user.get('username') == claims.get('username')
     assert g.jwt_oidc_token_info.get('username') == claims.get('username')
-
-
-
