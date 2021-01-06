@@ -11,6 +11,7 @@ flask-cors
 pytest
 
 # Lint and code style
+autopep8
 flake8
 flake8-blind-except
 flake8-debugger
@@ -18,3 +19,6 @@ flake8-docstrings
 flake8-isort
 flake8-quotes
 pep8-naming
+pydocstyle
+pylint
+pylint-flask
