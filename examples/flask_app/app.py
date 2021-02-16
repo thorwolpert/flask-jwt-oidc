@@ -96,6 +96,15 @@ def add_routes(app):
                                "The roles were checked before entering the body of the procedure! "
                                "You provided a valid JWT token")
 
+    @app.route("/api/cookie-secure")
+    @cross_origin(allow_headers=["Content-Type", "Authorization"])
+    @cross_origin(allow_headers=["Access-Control-Allow-Origin", "*"])  # IRL you'd scope this to set domains
+    @jwt.requires_auth_cookie
+    def cookie_secure():
+        """A Cookie is required with JWT to get a response from this endpoint
+        """
+        return jsonify(message="This is a secured endpoint. You provided a valid cookie in request to access.")
+
     return
 
 

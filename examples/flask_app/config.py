@@ -18,6 +18,9 @@ class Config(object):
     JWT_OIDC_AUDIENCE = env.get('JWT_OIDC_AUDIENCE')
     JWT_OIDC_CLIENT_SECRET = env.get('JWT_OIDC_CLIENT_SECRET')
 
+    # JWT_OIDC Cookie settings - Only if application uses cookie for authorization
+    JWT_OIDC_AUTH_COOKIE_NAME = env.get('JWT_OIDC_AUTH_COOKIE_NAME', 'oidc-jwt')
+
     # Flask settings
     DEBUG = False
     TESTING = False

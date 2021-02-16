@@ -6,3 +6,4 @@
 #export JWT_OIDC_ISSUER="https://sso-dev.pathfinder.gov.bc.ca/auth/realms/sbc"
 #export JWT_OIDC_AUDIENCE="NameX-Dev"
 #export JWT_OIDC_CLIENT_SECRET="	 b05bae52-e0d3-4c42-9954-594b22d1d24b"
+#export JWT_OIDC_AUTH_COOKIE_NAME="oidc-jwt"
