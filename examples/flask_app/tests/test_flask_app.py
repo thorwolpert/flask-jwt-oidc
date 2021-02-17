@@ -125,3 +125,18 @@ def test_current_user_set(app, client, jwt):
     assert rv
     assert _request_ctx_stack.top.current_user.get('username') == claims.get('username')
     assert g.jwt_oidc_token_info.get('username') == claims.get('username')
+
+
+def test_api_cookie_secure(client, jwt):
+    """
+    First test that verifies we have a valid cookie with jwt
+    :fixture client:
+    """
+    token = jwt.create_jwt(claims, token_header)
+    client.set_cookie('/', 'oidc-jwt', token)
+
+    rv = client.get('/api/cookie-secure')
+
+    json_msg = jsonify(message='This is a secured endpoint. You provided a valid cookie in request to access.')
+
+    assert json_msg.data == rv.data

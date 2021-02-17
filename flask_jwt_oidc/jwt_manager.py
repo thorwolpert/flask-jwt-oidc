@@ -183,6 +183,17 @@ class JwtManager:  # pylint: disable=too-many-instance-attributes
 
         return parts[1]
 
+    @staticmethod
+    def _get_token_auth_cookie():
+        """Obtain the access token from the cookie."""
+        cookie_name = current_app.config.get('JWT_OIDC_AUTH_COOKIE_NAME', 'oidc-jwt')
+        cookie = request.cookies.get(cookie_name, None)
+        if not cookie:
+            raise AuthError({'code': 'authorization_cookie_missing',
+                             'description': 'Authorization cookie is expected'}, 401)
+
+        return cookie
+
     def contains_role(self, roles):
         """Check that the listed roles are in the token using the registered callback.
 
@@ -262,9 +273,25 @@ class JwtManager:  # pylint: disable=too-many-instance-attributes
 
         return decorated
 
+    def requires_auth_cookie(self, f):
+        """Validate the Cookie."""
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            self._require_auth_cookie_validation(*args, **kwargs)
+
+            return f(*args, **kwargs)
+
+        return decorated
+
     def _require_auth_validation(self, *args, **kwargs):  # pylint: disable=unused-argument
         token = self.get_token_auth_header()
+        self._validate_token(token)
 
+    def _require_auth_cookie_validation(self, *args, **kwargs):  # pylint: disable=unused-argument
+        token = self._get_token_auth_cookie()
+        self._validate_token(token)
+
+    def _validate_token(self, token):
         try:
             unverified_header = jwt.get_unverified_header(token)
         except jwt.JWTError as jerr:
