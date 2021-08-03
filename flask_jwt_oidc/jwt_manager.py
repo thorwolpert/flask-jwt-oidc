@@ -32,7 +32,7 @@ from .exceptions import AuthError
 class JwtManager:  # pylint: disable=too-many-instance-attributes
     """Manages the JWT verification and JWKS key lookup."""
 
-    ALGORITHMS = ['RS256']
+    ALGORITHMS = 'RS256'
 
     def __init__(self, app=None):
         """Initialize the JWTManager instance."""
@@ -99,8 +99,9 @@ class JwtManager:  # pylint: disable=too-many-instance-attributes
 
         else:
 
-            self.algorithms = [app.config.get(
-                'JWT_OIDC_ALGORITHMS', JwtManager.ALGORITHMS)]
+            self.algorithms = app.config.get(
+                'JWT_OIDC_ALGORITHMS', JwtManager.ALGORITHMS).replace(' ', '')\
+                .split(',')
 
             # If the WELL_KNOWN_CONFIG is set, then go fetch the JWKS & ISSUER
             self.well_known_config = app.config.get(
