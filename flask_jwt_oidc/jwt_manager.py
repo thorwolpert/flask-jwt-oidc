@@ -20,7 +20,6 @@ The JWKS store is cached and refreshed on a periodic basis.
 import json
 import ssl  # pylint: disable=unused-import # noqa: F401; for local hacks
 from functools import wraps
-from importlib.metadata import version
 
 from cachelib import SimpleCache
 from flask import current_app, g, jsonify, request
