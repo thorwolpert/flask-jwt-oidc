@@ -22,7 +22,8 @@ import ssl  # pylint: disable=unused-import # noqa: F401; for local hacks
 from functools import wraps
 
 from cachelib import SimpleCache
-from flask import _request_ctx_stack, current_app, g, jsonify, request
+from flask import current_app, g, jsonify, request
+from flask.globals import request_ctx
 from jose import jwt
 from six.moves.urllib.request import urlopen
 
@@ -331,7 +332,7 @@ class JwtManager:  # pylint: disable=too-many-instance-attributes
                 audience=self.audience,
                 issuer=self.issuer
             )
-            _request_ctx_stack.top.current_user = g.jwt_oidc_token_info = payload
+            request_ctx.current_user = g.jwt_oidc_token_info = payload
         except jwt.ExpiredSignatureError as sig:
             raise AuthError({'code': 'token_expired',
                              'description': 'token has expired'}, 401) from sig
