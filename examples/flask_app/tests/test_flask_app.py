@@ -133,7 +133,7 @@ def test_api_cookie_secure(client, jwt):
     :fixture client:
     """
     token = jwt.create_jwt(claims, token_header)
-    client.set_cookie('/', 'oidc-jwt', token)
+    client.set_cookie('oidc-jwt', token)
 
     rv = client.get('/api/cookie-secure')
 
