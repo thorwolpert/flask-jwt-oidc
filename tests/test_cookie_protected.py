@@ -44,7 +44,7 @@ def test_protected_requires_auth_cookie_with_cookie(client, app, jwt):
         return jsonify(message=message)
 
     token = helper_create_jwt(jwt)
-    client.set_cookie('/', 'oidc-jwt', token)
+    client.set_cookie('oidc-jwt', token)
 
     rv = client.get('/cookie-protected')
     assert message.encode('utf-8') in rv.data
@@ -63,7 +63,7 @@ def test_protected_requires_auth_cookie_with_custom_cookie_name(client, app, jwt
     app.config['JWT_OIDC_AUTH_COOKIE_NAME'] = cookie_name
 
     token = helper_create_jwt(jwt)
-    client.set_cookie('/', cookie_name, token)
+    client.set_cookie(cookie_name, token)
 
     rv = client.get('/cookie-protected')
     assert message.encode('utf-8') in rv.data
