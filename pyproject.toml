@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "flask-jwt-oidc"
+version = "0.6.0"
+description = "Opinionated flask oidc client"
+authors = [
+   "thor wolpert <thor@wolpert.ca>"
+]
+license = "BSD 3-Clause"
+readme = "README.md"
+packages = [{include = "flask_jwt_oidc", from = "src"}]
+
+[project.urls]
+Homepage = "https://github.com/thorwolpert/flask-jwt-oidc"
+Issues = "https://github.com/thorwolpert/flask-jwt-oidc/issues"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+Flask = "^2"
+cachelib = "^0.13.0"
+python-jose = "^3.3.0"
+six = "^1.16.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.1.1"
+python-dotenv = "^1.0.1"
+Flask-Cors = "^4.0.0"
+black = "^24.4.1"
+zimports = "^0.6.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
