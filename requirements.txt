@@ -1,3 +1,0 @@
-# load production requirements here, as some utils look for this file
-
--r requirements/prod.txt
