@@ -112,10 +112,6 @@ if __name__ == "__main__":
     app.run()
 
 ```
-## Thanks
-The following folks have provided help, feedback, PRs, etc:
-- Jamie Lennox
-- James Hollinger
 
 ## TODO
 - add tests
