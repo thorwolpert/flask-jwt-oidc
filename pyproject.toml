@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "flask-jwt-oidc"
-version = "0.6.0"
+version = "0.7.0"
 description = "Opinionated flask oidc client"
 authors = [
    "thor wolpert <thor@wolpert.ca>"
