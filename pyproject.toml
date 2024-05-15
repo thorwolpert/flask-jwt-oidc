@@ -15,7 +15,7 @@ Issues = "https://github.com/thorwolpert/flask-jwt-oidc/issues"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-Flask = "^3"
+Flask = ">=2"
 cachelib = "^0.13.0"
 python-jose = "^3.3.0"
 six = "^1.16.0"
