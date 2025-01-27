@@ -18,13 +18,14 @@ The JWKS store is cached and refreshed on a periodic basis.
 """
 
 import json
+import jwt
 import ssl  # pylint: disable=unused-import # noqa: F401; for local hacks
 from functools import wraps
 
 from cachelib import SimpleCache
 from flask import current_app, g, jsonify, request
 from flask.globals import request_ctx
-from jose import jwt
+from jwt.exceptions import PyJWTError
 from six.moves.urllib.request import urlopen
 
 from .exceptions import AuthError
@@ -196,17 +197,14 @@ class JwtManager:  # pylint: disable=too-many-instance-attributes
 
         return cookie
 
-    def contains_role(self, roles):
+    def contains_role(self, claims, roles):
         """Check that the listed roles are in the token using the registered callback.
 
         Args:
             roles [str,]: Comma separated list of valid roles
             JWT_ROLE_CALLBACK (fn): The callback added to the Flask configuration
         """
-        token = self.get_token_auth_header()
-        unverified_claims = jwt.get_unverified_claims(token)
-        roles_in_token = current_app.config['JWT_ROLE_CALLBACK'](
-            unverified_claims)
+        roles_in_token = current_app.config['JWT_ROLE_CALLBACK'](claims)
         if any(elem in roles_in_token for elem in roles):
             return True
         return False
@@ -221,8 +219,8 @@ class JwtManager:  # pylint: disable=too-many-instance-attributes
         def decorated(f):
             @wraps(f)
             def wrapper(*args, **kwargs):
-                self._require_auth_validation(*args, **kwargs)
-                if self.contains_role(roles):
+                claims = self._require_auth_validation(*args, **kwargs)
+                if self.contains_role(claims, roles):
                     return f(*args, **kwargs)
                 raise AuthError({'code': 'missing_a_valid_role',
                                  'description':
@@ -230,17 +228,17 @@ class JwtManager:  # pylint: disable=too-many-instance-attributes
             return wrapper
         return decorated
 
-    def validate_roles(self, required_roles):
+    def validate_roles(self, claims, required_roles):
         """Check that the listed roles are in the token using the registered callback.
 
         Args:
             required_roles [str,]: Comma separated list of required roles
             JWT_ROLE_CALLBACK (fn): The callback added to the Flask configuration
         """
-        token = self.get_token_auth_header()
-        unverified_claims = jwt.get_unverified_claims(token)
-        roles_in_token = current_app.config['JWT_ROLE_CALLBACK'](
-            unverified_claims)
+        # token = self.get_token_auth_header()
+        # jwt.decode(token
+        # unverified_claims = jwt.get_unverified_claims(token)
+        roles_in_token = current_app.config['JWT_ROLE_CALLBACK'](claims)
         if all(elem in roles_in_token for elem in required_roles):
             return True
         return False
@@ -255,8 +253,8 @@ class JwtManager:  # pylint: disable=too-many-instance-attributes
         def decorated(f):
             @wraps(f)
             def wrapper(*args, **kwargs):
-                self._require_auth_validation(*args, **kwargs)
-                if self.validate_roles(required_roles):
+                claims = self._require_auth_validation(*args, **kwargs)
+                if self.validate_roles(claims, required_roles):
                     return f(*args, **kwargs)
                 raise AuthError({'code': 'missing_required_roles',
                                  'description':
@@ -287,16 +285,16 @@ class JwtManager:  # pylint: disable=too-many-instance-attributes
 
     def _require_auth_validation(self, *args, **kwargs):  # pylint: disable=unused-argument
         token = self.get_token_auth_header()
-        self._validate_token(token)
+        return self._validate_token(token)
 
     def _require_auth_cookie_validation(self, *args, **kwargs):  # pylint: disable=unused-argument
         token = self._get_token_auth_cookie()
-        self._validate_token(token)
+        return self._validate_token(token)
 
     def _validate_token(self, token):
         try:
             unverified_header = jwt.get_unverified_header(token)
-        except jwt.JWTError as jerr:
+        except PyJWTError as jerr:
             raise AuthError({'code': 'invalid_header',
                              'description':
                                  'Invalid header. '
@@ -333,10 +331,11 @@ class JwtManager:  # pylint: disable=too-many-instance-attributes
                 issuer=self.issuer
             )
             request_ctx.current_user = g.jwt_oidc_token_info = payload
+            return payload
         except jwt.ExpiredSignatureError as sig:
             raise AuthError({'code': 'token_expired',
                              'description': 'token has expired'}, 401) from sig
-        except jwt.JWTClaimsError as jwe:
+        except jwt.MissingRequiredClaimError as jwe:
             raise AuthError({'code': 'invalid_claims',
                              'description':
                                  'incorrect claims,'
@@ -376,14 +375,7 @@ class JwtManager:  # pylint: disable=too-many-instance-attributes
     @staticmethod
     def get_rsa_key(jwks, kid):
         """Return the matching RSA key for kid, from the jwks array."""
-        rsa_key = {}
         for key in jwks['keys']:
             if key['kid'] == kid:
-                rsa_key = {
-                    'kty': key['kty'],
-                    'kid': key['kid'],
-                    'use': key['use'],
-                    'n': key['n'],
-                    'e': key['e']
-                }
-        return rsa_key
+                return jwt.PyJWK(key)
+        return {}
