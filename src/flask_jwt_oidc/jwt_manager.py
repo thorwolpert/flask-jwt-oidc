@@ -21,12 +21,12 @@ import json
 import jwt
 import ssl  # pylint: disable=unused-import # noqa: F401; for local hacks
 from functools import wraps
+from urllib.request import urlopen
 
 from cachelib import SimpleCache
 from flask import current_app, g, jsonify, request
 from flask.globals import request_ctx
 from jwt.exceptions import PyJWTError
-from six.moves.urllib.request import urlopen
 
 from .exceptions import AuthError
 
@@ -34,7 +34,7 @@ from .exceptions import AuthError
 class JwtManager:  # pylint: disable=too-many-instance-attributes
     """Manages the JWT verification and JWKS key lookup."""
 
-    ALGORITHMS = 'RS256'
+    ALGORITHMS = "RS256"
 
     def __init__(self, app=None):
         """Initialize the JWTManager instance."""
@@ -72,77 +72,82 @@ class JwtManager:  # pylint: disable=too-many-instance-attributes
         CLIENT_SECRET: the shared secret / key assigned to the client (audience)
         """
         self.app = app
-        self.jwt_oidc_test_mode = app.config.get('JWT_OIDC_TEST_MODE', None)
+        self.jwt_oidc_test_mode = app.config.get("JWT_OIDC_TEST_MODE", None)
         #
         # CHECK IF WE"RE RUNNING IN TEST_MODE!!
         #
         if self.jwt_oidc_test_mode:
             app.logger.debug(
-                'JWT MANAGER running in test mode, using locally defined certs & tokens')
+                "JWT MANAGER running in test mode, using locally defined certs & tokens"
+            )
 
             self.issuer = app.config.get(
-                'JWT_OIDC_TEST_ISSUER', 'localhost.localdomain')
-            self.jwt_oidc_test_keys = app.config.get(
-                'JWT_OIDC_TEST_KEYS', None)
-            self.audience = app.config.get('JWT_OIDC_TEST_AUDIENCE', None)
-            self.client_secret = app.config.get(
-                'JWT_OIDC_TEST_CLIENT_SECRET', None)
+                "JWT_OIDC_TEST_ISSUER", "localhost.localdomain"
+            )
+            self.jwt_oidc_test_keys = app.config.get("JWT_OIDC_TEST_KEYS", None)
+            self.audience = app.config.get("JWT_OIDC_TEST_AUDIENCE", None)
+            self.client_secret = app.config.get("JWT_OIDC_TEST_CLIENT_SECRET", None)
             self.jwt_oidc_test_private_key_pem = app.config.get(
-                'JWT_OIDC_TEST_PRIVATE_KEY_PEM', None)
+                "JWT_OIDC_TEST_PRIVATE_KEY_PEM", None
+            )
 
             if self.jwt_oidc_test_keys:
-                app.logger.debug('local key being used: {}'.format(
-                    self.jwt_oidc_test_keys))
+                app.logger.debug(
+                    "local key being used: {}".format(self.jwt_oidc_test_keys)
+                )
             else:
                 app.logger.error(
-                    'Attempting to run JWT Manager with no local key assigned')
+                    "Attempting to run JWT Manager with no local key assigned"
+                )
                 raise Exception(
-                    'Attempting to run JWT Manager with no local key assigned')
+                    "Attempting to run JWT Manager with no local key assigned"
+                )
 
         else:
 
-            self.algorithms = app.config.get(
-                'JWT_OIDC_ALGORITHMS', JwtManager.ALGORITHMS).replace(' ', '')\
-                .split(',')
+            self.algorithms = (
+                app.config.get("JWT_OIDC_ALGORITHMS", JwtManager.ALGORITHMS)
+                .replace(" ", "")
+                .split(",")
+            )
 
             # If the WELL_KNOWN_CONFIG is set, then go fetch the JWKS & ISSUER
-            self.well_known_config = app.config.get(
-                'JWT_OIDC_WELL_KNOWN_CONFIG', None)
+            self.well_known_config = app.config.get("JWT_OIDC_WELL_KNOWN_CONFIG", None)
             if self.well_known_config:
                 # try to get the jwks & issuer from the well known config
                 # jurl = urlopen(url=self.well_known_config, context=ssl.SSLContext()) # for gangster testing
                 jurl = urlopen(url=self.well_known_config)
-                self.well_known_obj_cache = json.loads(
-                    jurl.read().decode('utf-8'))
+                self.well_known_obj_cache = json.loads(jurl.read().decode("utf-8"))
 
-                self.jwks_uri = self.well_known_obj_cache['jwks_uri']
-                self.issuer = self.well_known_obj_cache['issuer']
+                self.jwks_uri = self.well_known_obj_cache["jwks_uri"]
+                self.issuer = self.well_known_obj_cache["issuer"]
             else:
 
-                self.jwks_uri = app.config.get('JWT_OIDC_JWKS_URI', None)
-                self.issuer = app.config.get('JWT_OIDC_ISSUER', None)
+                self.jwks_uri = app.config.get("JWT_OIDC_JWKS_URI", None)
+                self.issuer = app.config.get("JWT_OIDC_ISSUER", None)
 
             # Setup JWKS caching
-            self.caching_enabled = app.config.get(
-                'JWT_OIDC_CACHING_ENABLED', False)
+            self.caching_enabled = app.config.get("JWT_OIDC_CACHING_ENABLED", False)
             if self.caching_enabled:
-                self.cache = SimpleCache(default_timeout=app.config.get(
-                    'JWT_OIDC_JWKS_CACHE_TIMEOUT', 300))
+                self.cache = SimpleCache(
+                    default_timeout=app.config.get("JWT_OIDC_JWKS_CACHE_TIMEOUT", 300)
+                )
 
-            self.audience = app.config.get('JWT_OIDC_AUDIENCE', None)
-            self.client_secret = app.config.get('JWT_OIDC_CLIENT_SECRET', None)
+            self.audience = app.config.get("JWT_OIDC_AUDIENCE", None)
+            self.client_secret = app.config.get("JWT_OIDC_CLIENT_SECRET", None)
 
-        app.logger.debug('JWKS_URI: {}'.format(self.jwks_uri))
-        app.logger.debug('ISSUER: {}'.format(self.issuer))
-        app.logger.debug('ALGORITHMS: {}'.format(self.algorithms))
-        app.logger.debug('AUDIENCE: {}'.format(self.audience))
-        app.logger.debug('CLIENT_SECRET: {}'.format(self.client_secret))
-        app.logger.debug('JWT_OIDC_TEST_MODE: {}'.format(self.jwt_oidc_test_mode))
-        app.logger.debug('JWT_OIDC_TEST_KEYS: {}'.format(self.jwt_oidc_test_keys))
+        app.logger.debug("JWKS_URI: {}".format(self.jwks_uri))
+        app.logger.debug("ISSUER: {}".format(self.issuer))
+        app.logger.debug("ALGORITHMS: {}".format(self.algorithms))
+        app.logger.debug("AUDIENCE: {}".format(self.audience))
+        app.logger.debug("CLIENT_SECRET: {}".format(self.client_secret))
+        app.logger.debug("JWT_OIDC_TEST_MODE: {}".format(self.jwt_oidc_test_mode))
+        app.logger.debug("JWT_OIDC_TEST_KEYS: {}".format(self.jwt_oidc_test_keys))
 
         # set the auth error handler
         auth_err_handler = app.config.get(
-            'JWT_OIDC_AUTH_ERROR_HANDLER', JwtManager.handle_auth_error)
+            "JWT_OIDC_AUTH_ERROR_HANDLER", JwtManager.handle_auth_error
+        )
         app.register_error_handler(AuthError, auth_err_handler)
 
         app.teardown_appcontext(self.teardown)
@@ -165,46 +170,74 @@ class JwtManager:  # pylint: disable=too-many-instance-attributes
     @staticmethod
     def get_token_auth_header():
         """Obtain the access token from the Authorization Header."""
-        auth = request.headers.get('Authorization', None)
+        auth = request.headers.get("Authorization", None)
         if not auth:
-            raise AuthError({'code': 'authorization_header_missing',
-                             'description': 'Authorization header is expected'}, 401)
+            raise AuthError(
+                {
+                    "code": "authorization_header_missing",
+                    "description": "Authorization header is expected",
+                },
+                401,
+            )
 
         parts = auth.split()
 
-        if parts[0].lower() != 'bearer':
-            raise AuthError({'code': 'invalid_header',
-                             'description': 'Authorization header must start with Bearer'}, 401)
+        if parts[0].lower() != "bearer":
+            raise AuthError(
+                {
+                    "code": "invalid_header",
+                    "description": "Authorization header must start with Bearer",
+                },
+                401,
+            )
 
         if len(parts) < 2:
-            raise AuthError({'code': 'invalid_header',
-                             'description': 'Token not found after Bearer'}, 401)
+            raise AuthError(
+                {
+                    "code": "invalid_header",
+                    "description": "Token not found after Bearer",
+                },
+                401,
+            )
 
         if len(parts) > 2:
-            raise AuthError({'code': 'invalid_header',
-                             'description': 'Authorization header is an invalid token structure'}, 401)
+            raise AuthError(
+                {
+                    "code": "invalid_header",
+                    "description": "Authorization header is an invalid token structure",
+                },
+                401,
+            )
 
         return parts[1]
 
     @staticmethod
     def _get_token_auth_cookie():
         """Obtain the access token from the cookie."""
-        cookie_name = current_app.config.get('JWT_OIDC_AUTH_COOKIE_NAME', 'oidc-jwt')
+        cookie_name = current_app.config.get("JWT_OIDC_AUTH_COOKIE_NAME", "oidc-jwt")
         cookie = request.cookies.get(cookie_name, None)
         if not cookie:
-            raise AuthError({'code': 'authorization_cookie_missing',
-                             'description': 'Authorization cookie is expected'}, 401)
+            raise AuthError(
+                {
+                    "code": "authorization_cookie_missing",
+                    "description": "Authorization cookie is expected",
+                },
+                401,
+            )
 
         return cookie
 
-    def contains_role(self, claims, roles):
+    def contains_role(self, roles, claims=None):
         """Check that the listed roles are in the token using the registered callback.
 
         Args:
             roles [str,]: Comma separated list of valid roles
+            claims (dict, optional): The token claims. Defaults to g.jwt_oidc_token_info.
             JWT_ROLE_CALLBACK (fn): The callback added to the Flask configuration
         """
-        roles_in_token = current_app.config['JWT_ROLE_CALLBACK'](claims)
+        if claims is None:
+            claims = g.get("jwt_oidc_token_info", {})
+        roles_in_token = current_app.config["JWT_ROLE_CALLBACK"](claims)
         if any(elem in roles_in_token for elem in roles):
             return True
         return False
@@ -216,29 +249,39 @@ class JwtManager:  # pylint: disable=too-many-instance-attributes
             roles [str,]: Comma separated list of valid roles
             JWT_ROLE_CALLBACK (fn): The callback added to the Flask configuration
         """
+
         def decorated(f):
             @wraps(f)
             def wrapper(*args, **kwargs):
                 claims = self._require_auth_validation(*args, **kwargs)
-                if self.contains_role(claims, roles):
+                if self.contains_role(roles, claims=claims):
                     return f(*args, **kwargs)
-                raise AuthError({'code': 'missing_a_valid_role',
-                                 'description':
-                                     'Missing a role required to access this endpoint'}, 401)
+                raise AuthError(
+                    {
+                        "code": "missing_a_valid_role",
+                        "description": "Missing a role required to access this endpoint",
+                    },
+                    401,
+                )
+
             return wrapper
+
         return decorated
 
-    def validate_roles(self, claims, required_roles):
+    def validate_roles(self, required_roles, claims=None):
         """Check that the listed roles are in the token using the registered callback.
 
         Args:
             required_roles [str,]: Comma separated list of required roles
+            claims (dict, optional): The token claims. Defaults to g.jwt_oidc_token_info.
             JWT_ROLE_CALLBACK (fn): The callback added to the Flask configuration
         """
+        if claims is None:
+            claims = g.get("jwt_oidc_token_info", {})
         # token = self.get_token_auth_header()
         # jwt.decode(token
         # unverified_claims = jwt.get_unverified_claims(token)
-        roles_in_token = current_app.config['JWT_ROLE_CALLBACK'](claims)
+        roles_in_token = current_app.config["JWT_ROLE_CALLBACK"](claims)
         if all(elem in roles_in_token for elem in required_roles):
             return True
         return False
@@ -250,20 +293,28 @@ class JwtManager:  # pylint: disable=too-many-instance-attributes
             required_roles [str,]: Comma separated list of required roles
             JWT_ROLE_CALLBACK (fn): The callback added to the Flask configuration
         """
+
         def decorated(f):
             @wraps(f)
             def wrapper(*args, **kwargs):
                 claims = self._require_auth_validation(*args, **kwargs)
-                if self.validate_roles(claims, required_roles):
+                if self.validate_roles(required_roles, claims=claims):
                     return f(*args, **kwargs)
-                raise AuthError({'code': 'missing_required_roles',
-                                 'description':
-                                     'Missing the role(s) required to access this endpoint'}, 401)
+                raise AuthError(
+                    {
+                        "code": "missing_required_roles",
+                        "description": "Missing the role(s) required to access this endpoint",
+                    },
+                    401,
+                )
+
             return wrapper
+
         return decorated
 
     def requires_auth(self, f):
         """Validate the Bearer Token."""
+
         @wraps(f)
         def decorated(*args, **kwargs):
 
@@ -275,6 +326,7 @@ class JwtManager:  # pylint: disable=too-many-instance-attributes
 
     def requires_auth_cookie(self, f):
         """Validate the Cookie."""
+
         @wraps(f)
         def decorated(*args, **kwargs):
             self._require_auth_cookie_validation(*args, **kwargs)
@@ -283,11 +335,15 @@ class JwtManager:  # pylint: disable=too-many-instance-attributes
 
         return decorated
 
-    def _require_auth_validation(self, *args, **kwargs):  # pylint: disable=unused-argument
+    def _require_auth_validation(
+        self, *args, **kwargs
+    ):  # pylint: disable=unused-argument
         token = self.get_token_auth_header()
         return self._validate_token(token)
 
-    def _require_auth_cookie_validation(self, *args, **kwargs):  # pylint: disable=unused-argument
+    def _require_auth_cookie_validation(
+        self, *args, **kwargs
+    ):  # pylint: disable=unused-argument
         token = self._get_token_auth_cookie()
         return self._validate_token(token)
 
@@ -295,32 +351,47 @@ class JwtManager:  # pylint: disable=too-many-instance-attributes
         try:
             unverified_header = jwt.get_unverified_header(token)
         except PyJWTError as jerr:
-            raise AuthError({'code': 'invalid_header',
-                             'description':
-                                 'Invalid header. '
-                                 'Use an RS256 signed JWT Access Token'}, 401) from jerr
-        if unverified_header['alg'] == 'HS256':
-            raise AuthError({'code': 'invalid_header',
-                             'description':
-                                 'Invalid header. '
-                                 'Use an RS256 signed JWT Access Token'}, 401)
-        if 'kid' not in unverified_header:
-            raise AuthError({'code': 'invalid_header',
-                             'description':
-                                 'Invalid header. '
-                                 'No KID in token header'}, 401)
+            raise AuthError(
+                {
+                    "code": "invalid_header",
+                    "description": "Invalid header. "
+                    "Use an RS256 signed JWT Access Token",
+                },
+                401,
+            ) from jerr
+        if unverified_header["alg"] == "HS256":
+            raise AuthError(
+                {
+                    "code": "invalid_header",
+                    "description": "Invalid header. "
+                    "Use an RS256 signed JWT Access Token",
+                },
+                401,
+            )
+        if "kid" not in unverified_header:
+            raise AuthError(
+                {
+                    "code": "invalid_header",
+                    "description": "Invalid header. " "No KID in token header",
+                },
+                401,
+            )
 
-        rsa_key = self.get_rsa_key(self.get_jwks(), unverified_header['kid'])
+        rsa_key = self.get_rsa_key(self.get_jwks(), unverified_header["kid"])
 
         if not rsa_key and self.caching_enabled:
             # Could be key rotation, invalidate the cache and try again
-            self.cache.delete('jwks')
-            rsa_key = self.get_rsa_key(
-                self.get_jwks(), unverified_header['kid'])
+            self.cache.delete("jwks")
+            rsa_key = self.get_rsa_key(self.get_jwks(), unverified_header["kid"])
 
         if not rsa_key:
-            raise AuthError({'code': 'invalid_header',
-                             'description': 'Unable to find jwks key referenced in token'}, 401)
+            raise AuthError(
+                {
+                    "code": "invalid_header",
+                    "description": "Unable to find jwks key referenced in token",
+                },
+                401,
+            )
 
         try:
             payload = jwt.decode(
@@ -328,23 +399,31 @@ class JwtManager:  # pylint: disable=too-many-instance-attributes
                 rsa_key,
                 algorithms=self.algorithms,
                 audience=self.audience,
-                issuer=self.issuer
+                issuer=self.issuer,
             )
             request_ctx.current_user = g.jwt_oidc_token_info = payload
             return payload
         except jwt.ExpiredSignatureError as sig:
-            raise AuthError({'code': 'token_expired',
-                             'description': 'token has expired'}, 401) from sig
+            raise AuthError(
+                {"code": "token_expired", "description": "token has expired"}, 401
+            ) from sig
         except jwt.MissingRequiredClaimError as jwe:
-            raise AuthError({'code': 'invalid_claims',
-                             'description':
-                                 'incorrect claims,'
-                                 ' please check the audience and issuer'}, 401) from jwe
+            raise AuthError(
+                {
+                    "code": "invalid_claims",
+                    "description": "incorrect claims,"
+                    " please check the audience and issuer",
+                },
+                401,
+            ) from jwe
         except Exception as exc:
-            raise AuthError({'code': 'invalid_header',
-                             'description':
-                                 'Unable to parse authentication'
-                                 ' token.'}, 401) from exc
+            raise AuthError(
+                {
+                    "code": "invalid_header",
+                    "description": "Unable to parse authentication" " token.",
+                },
+                401,
+            ) from exc
 
     def get_jwks(self):
         """Return the test, cached or fetched JWKS for the KID provided."""
@@ -356,26 +435,30 @@ class JwtManager:  # pylint: disable=too-many-instance-attributes
         return self._fetch_jwks_from_url()
 
     def _get_jwks_from_cache(self):
-        jwks = self.cache.get('jwks')
+        jwks = self.cache.get("jwks")
         if jwks is None:
             jwks = self._fetch_jwks_from_url()
-            self.cache.set('jwks', jwks)
+            self.cache.set("jwks", jwks)
         return jwks
 
     def _fetch_jwks_from_url(self):
         jsonurl = urlopen(self.jwks_uri)
-        return json.loads(jsonurl.read().decode('utf-8'))
+        return json.loads(jsonurl.read().decode("utf-8"))
 
     def create_jwt(self, claims, header):
         """Create a token for the client and JWKS kid provided."""
         token = jwt.encode(
-            claims, self.jwt_oidc_test_private_key_pem, headers=header, algorithm='RS256')
+            claims,
+            self.jwt_oidc_test_private_key_pem,
+            headers=header,
+            algorithm="RS256",
+        )
         return token
 
     @staticmethod
     def get_rsa_key(jwks, kid):
         """Return the matching RSA key for kid, from the jwks array."""
-        for key in jwks['keys']:
-            if key['kid'] == kid:
+        for key in jwks["keys"]:
+            if key["kid"] == kid:
                 return jwt.PyJWK(key)
         return {}

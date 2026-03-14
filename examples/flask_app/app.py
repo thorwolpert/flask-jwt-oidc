@@ -1,4 +1,3 @@
-
 """Python Flask API with OIDC JWT setup
 
 Minimum config:
@@ -23,7 +22,7 @@ def create_app(config=Config):
     app = Flask(__name__)
     app.config.from_object(config)
 
-    CORS(app=app, supports_credentials = True)
+    CORS(app=app, supports_credentials=True)
 
     setup_jwt_manager(app, jwt)
     add_routes(app)
@@ -33,8 +32,9 @@ def create_app(config=Config):
 
 def setup_jwt_manager(app, jwt):
     def get_roles(a_dict):
-        return a_dict['realm_access']['roles']
-    app.config['JWT_ROLE_CALLBACK'] = get_roles
+        return a_dict["realm_access"]["roles"]
+
+    app.config["JWT_ROLE_CALLBACK"] = get_roles
 
     jwt.init_app(app)
 
@@ -45,65 +45,82 @@ def add_routes(app):
     @app.route("/api/public")
     @cross_origin(allow_headers=["Content-Type", "Authorization"])
     def public():
-        """No auth verification
-        """
+        """No auth verification"""
         return jsonify(message="This is an unprotected endpoint open to the public!")
 
     @app.route("/api/secure")
     @cross_origin(allow_headers=["Content-Type", "Authorization"])
-    @cross_origin(allow_headers=["Access-Control-Allow-Origin", "*"]) # IRL you'd scope this to set domains
+    @cross_origin(
+        allow_headers=["Access-Control-Allow-Origin", "*"]
+    )  # IRL you'd scope this to set domains
     @jwt.requires_auth
     def secure():
-        """A Bearer JWT is required to get a response from this endpoint
-        """
-        return jsonify(message="The is a secured endpoint. You provided a valid Bearer JWT to access it.")
+        """A Bearer JWT is required to get a response from this endpoint"""
+        return jsonify(
+            message="The is a secured endpoint. You provided a valid Bearer JWT to access it."
+        )
 
     @app.route("/api/secured-and-roles")
     @cross_origin(allow_headers=["Content-Type", "Authorization"])
-    @cross_origin(allow_headers=["Access-Control-Allow-Origin", "*"]) # IRL you'd scope this to a real domain
+    @cross_origin(
+        allow_headers=["Access-Control-Allow-Origin", "*"]
+    )  # IRL you'd scope this to a real domain
     @jwt.requires_auth
     def secure_with_roles():
-        """valid access token and assigned roles are required
-        """
-        if jwt.validate_roles(['editor', 'approver']):
-            return jsonify(message="This is a secured endpoint, where roles were examined in the body of the procedure! "
-                                   "You provided a valid JWT token")
+        """valid access token and assigned roles are required"""
+        if jwt.validate_roles(["editor", "approver"]):
+            return jsonify(
+                message="This is a secured endpoint, where roles were examined in the body of the procedure! "
+                "You provided a valid JWT token"
+            )
 
-        raise AuthError({
-            "code": "Unauthorized",
-            "description": "You don't have access to this resource"
-        }, 403)
+        raise AuthError(
+            {
+                "code": "Unauthorized",
+                "description": "You don't have access to this resource",
+            },
+            403,
+        )
 
     @app.route("/api/secured-decorated-roles")
     @cross_origin(allow_headers=["Content-Type", "Authorization"])
-    @cross_origin(allow_headers=["Access-Control-Allow-Origin", "*"]) # IRL you may want to set this to a set of domains
-    @jwt.requires_roles(['approver'])
+    @cross_origin(
+        allow_headers=["Access-Control-Allow-Origin", "*"]
+    )  # IRL you may want to set this to a set of domains
+    @jwt.requires_roles(["approver"])
     def secure_deco_roles():
-        """valid access token and assigned roles are required
-        """
-        return jsonify(message="This is a secured endpoint. "
-                               "The roles were checked before entering the body of the procedure! "
-                               "You provided a valid JWT token")
+        """valid access token and assigned roles are required"""
+        return jsonify(
+            message="This is a secured endpoint. "
+            "The roles were checked before entering the body of the procedure! "
+            "You provided a valid JWT token"
+        )
 
     @app.route("/api/secured-decorated-at-least-one-role")
     @cross_origin(allow_headers=["Content-Type", "Authorization"])
-    @cross_origin(allow_headers=["Access-Control-Allow-Origin", "*"]) # IRL you may want to set this to a set of domains
-    @jwt.has_one_of_roles(['approver', 'not_valid_role'])
+    @cross_origin(
+        allow_headers=["Access-Control-Allow-Origin", "*"]
+    )  # IRL you may want to set this to a set of domains
+    @jwt.has_one_of_roles(["approver", "not_valid_role"])
     def secure_deco_with_at_least_one_valid_role():
-        """valid access token and assigned roles are required
-        """
-        return jsonify(message="This is a secured endpoint. "
-                               "The roles were checked before entering the body of the procedure! "
-                               "You provided a valid JWT token")
+        """valid access token and assigned roles are required"""
+        return jsonify(
+            message="This is a secured endpoint. "
+            "The roles were checked before entering the body of the procedure! "
+            "You provided a valid JWT token"
+        )
 
     @app.route("/api/cookie-secure")
     @cross_origin(allow_headers=["Content-Type", "Authorization"])
-    @cross_origin(allow_headers=["Access-Control-Allow-Origin", "*"])  # IRL you'd scope this to set domains
+    @cross_origin(
+        allow_headers=["Access-Control-Allow-Origin", "*"]
+    )  # IRL you'd scope this to set domains
     @jwt.requires_auth_cookie
     def cookie_secure():
-        """A Cookie is required with JWT to get a response from this endpoint
-        """
-        return jsonify(message="This is a secured endpoint. You provided a valid cookie in request to access.")
+        """A Cookie is required with JWT to get a response from this endpoint"""
+        return jsonify(
+            message="This is a secured endpoint. You provided a valid cookie in request to access."
+        )
 
     return
 

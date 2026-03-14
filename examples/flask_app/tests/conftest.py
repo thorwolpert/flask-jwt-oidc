@@ -1,6 +1,6 @@
 import pytest
 
-from flask import  Flask, current_app
+from flask import Flask, current_app
 from flask_jwt_oidc import AuthError, JwtManager
 
 from examples.flask_app.app import create_app, jwt as _jwt
