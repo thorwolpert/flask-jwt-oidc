@@ -5,10 +5,6 @@ This is a fairly simple extension that should require minimal setup for OIDC sta
 
 Currently it's testing against Keycloak, but will be adding in example configs and testing for:
 - Keycloak
-- dex
-- Google
-- Amazon IAM
-- Auth0
 
 
 ### Alternatives

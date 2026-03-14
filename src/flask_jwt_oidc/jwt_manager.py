@@ -21,12 +21,12 @@ import json
 import jwt
 import ssl  # pylint: disable=unused-import # noqa: F401; for local hacks
 from functools import wraps
+from urllib.request import urlopen
 
 from cachelib import SimpleCache
 from flask import current_app, g, jsonify, request
 from flask.globals import request_ctx
 from jwt.exceptions import PyJWTError
-from six.moves.urllib.request import urlopen
 
 from .exceptions import AuthError
 
@@ -197,13 +197,16 @@ class JwtManager:  # pylint: disable=too-many-instance-attributes
 
         return cookie
 
-    def contains_role(self, claims, roles):
+    def contains_role(self, roles, claims=None):
         """Check that the listed roles are in the token using the registered callback.
 
         Args:
             roles [str,]: Comma separated list of valid roles
+            claims (dict, optional): The token claims. Defaults to g.jwt_oidc_token_info.
             JWT_ROLE_CALLBACK (fn): The callback added to the Flask configuration
         """
+        if claims is None:
+            claims = g.get('jwt_oidc_token_info', {})
         roles_in_token = current_app.config['JWT_ROLE_CALLBACK'](claims)
         if any(elem in roles_in_token for elem in roles):
             return True
@@ -220,7 +223,7 @@ class JwtManager:  # pylint: disable=too-many-instance-attributes
             @wraps(f)
             def wrapper(*args, **kwargs):
                 claims = self._require_auth_validation(*args, **kwargs)
-                if self.contains_role(claims, roles):
+                if self.contains_role(roles, claims=claims):
                     return f(*args, **kwargs)
                 raise AuthError({'code': 'missing_a_valid_role',
                                  'description':
@@ -228,13 +231,16 @@ class JwtManager:  # pylint: disable=too-many-instance-attributes
             return wrapper
         return decorated
 
-    def validate_roles(self, claims, required_roles):
+    def validate_roles(self, required_roles, claims=None):
         """Check that the listed roles are in the token using the registered callback.
 
         Args:
             required_roles [str,]: Comma separated list of required roles
+            claims (dict, optional): The token claims. Defaults to g.jwt_oidc_token_info.
             JWT_ROLE_CALLBACK (fn): The callback added to the Flask configuration
         """
+        if claims is None:
+            claims = g.get('jwt_oidc_token_info', {})
         # token = self.get_token_auth_header()
         # jwt.decode(token
         # unverified_claims = jwt.get_unverified_claims(token)
@@ -254,7 +260,7 @@ class JwtManager:  # pylint: disable=too-many-instance-attributes
             @wraps(f)
             def wrapper(*args, **kwargs):
                 claims = self._require_auth_validation(*args, **kwargs)
-                if self.validate_roles(claims, required_roles):
+                if self.validate_roles(required_roles, claims=claims):
                     return f(*args, **kwargs)
                 raise AuthError({'code': 'missing_required_roles',
                                  'description':

@@ -62,7 +62,7 @@ def test_protected_auth_and_role(client, app, jwt, test_name, jwt_role, endpoint
     headers = {'Authorization': 'Bearer ' + token}
     rv = client.get('/protected', headers=headers)
 
-    if expected_code is 200:
+    if expected_code == 200:
         assert message.encode('utf-8') in rv.data
 
     assert rv.status_code == expected_code
